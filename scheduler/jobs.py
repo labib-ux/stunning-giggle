@@ -2,6 +2,7 @@
 
 import os
 import logging
+import json
 import joblib
 import numpy as np
 import pandas as pd
@@ -40,6 +41,23 @@ def run_trading_cycle(
         day_start_value: Portfolio value at the start of the trading day.
     """
     try:
+        try:
+            with open("bot_control.json", "r") as f:
+                control = json.load(f)
+            if control.get("paused", False):
+                logger.info(
+                    "Trading cycle skipped — bot is paused via dashboard."
+                )
+                return
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            logger.warning(
+                "Could not read bot_control.json: %s — "
+                "proceeding with trading cycle as normal.",
+                exc,
+            )
+
         df = fetch_historical_data(
             adapter,
             symbol,
