@@ -1,5 +1,6 @@
-"""Main entry point for the live trading scheduler."""
+"""Main entry point for training and the live trading scheduler."""
 
+import argparse
 import time
 import logging
 import sys
@@ -22,7 +23,66 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="RL Trading Bot")
+    parser.add_argument(
+        "--mode",
+        choices=["train", "paper", "live"],
+        default="live",
+        help="Execution mode: train, paper, or live",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = _parse_args()
+
+    if args.mode == "train":
+        from data.fetcher import fetch_historical_data
+        from data.features import compute_features, scale_features
+        from environment.trading_env import TradingEnvironment
+        from config import LOOKBACK_WINDOW, INITIAL_CAPITAL
+
+        adapter = AlpacaAdapter()
+
+        logger.info("Fetching historical data for training...")
+        df = fetch_historical_data(adapter, "BTC/USD", "1h", limit=500)
+
+        if df.empty:
+            logger.critical(
+                "Could not fetch training data. "
+                "Check your Alpaca API keys and connection."
+            )
+            sys.exit(1)
+
+        df = compute_features(df)
+
+        if df.empty:
+            logger.critical("Feature engineering returned empty DataFrame.")
+            sys.exit(1)
+
+        df_scaled, scaler = scale_features(df)
+        logger.info(
+            "Training data ready: %d rows, %d features",
+            len(df_scaled),
+            len(df_scaled.columns),
+        )
+
+        env = TradingEnvironment(
+            df=df_scaled,
+            initial_capital=INITIAL_CAPITAL,
+            lookback_window=LOOKBACK_WINDOW,
+            render_mode=None,
+        )
+        logger.info("Training environment created.")
+
+        agent = TradingAgent(env=env)
+
+        logger.info("Starting training...")
+        agent.train(total_timesteps=100000, reset_num_timesteps=True)
+        logger.info("Training complete. Model saved to: %s", MODEL_SAVE_PATH)
+        sys.exit(0)
+
     SessionLocal = init_db(DB_PATH)
     logger.info("Database initialized successfully.")
 
