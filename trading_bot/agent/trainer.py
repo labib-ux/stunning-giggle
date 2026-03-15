@@ -52,15 +52,21 @@ class TradingAgent:
         )
 
         try:
-            if os.path.exists(MODEL_SAVE_PATH):
+            if os.path.exists(MODEL_SAVE_PATH) and os.path.isfile(MODEL_SAVE_PATH):
                 self.model = PPO.load(
                     MODEL_SAVE_PATH,
                     env=self.env,
                     device=self.device,
                     tensorboard_log=tensorboard_log,
                 )
-                self.logger.info("Loaded model from path: %s", MODEL_SAVE_PATH)
+                self.logger.info("Loaded existing model from: %s", MODEL_SAVE_PATH)
             else:
+                if os.path.exists(MODEL_SAVE_PATH) and not os.path.isfile(MODEL_SAVE_PATH):
+                    self.logger.warning(
+                        "MODEL_SAVE_PATH '%s' exists but is a directory, not a file. "
+                        "Initializing new model instead.",
+                        MODEL_SAVE_PATH,
+                    )
                 self.model = PPO(
                     "MlpPolicy",
                     env=self.env,

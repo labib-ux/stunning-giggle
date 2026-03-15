@@ -46,7 +46,7 @@ if __name__ == "__main__":
         adapter = AlpacaAdapter()
 
         logger.info("Fetching historical data for training...")
-        df = fetch_historical_data(adapter, "BTC/USD", "1h", limit=500)
+        df = fetch_historical_data(adapter, "BTC/USD", "1h", limit=2000)
 
         if df.empty:
             logger.critical(

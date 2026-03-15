@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
+import os
 from typing import Optional, Tuple
 
 import numpy as np
@@ -175,9 +175,9 @@ def scale_features(
             max_val,
         )
 
-    model_dir = Path(MODEL_SAVE_PATH)
-    model_dir.mkdir(parents=True, exist_ok=True)
-    scaler_path = model_dir / "feature_scaler.pkl"
+    model_dir = os.path.dirname(MODEL_SAVE_PATH)
+    os.makedirs(model_dir, exist_ok=True)
+    scaler_path = os.path.join(model_dir, "feature_scaler.pkl")
     try:
         dump(scaler, scaler_path)
         logger.info("Saved feature scaler to %s", scaler_path)

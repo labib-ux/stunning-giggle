@@ -37,7 +37,7 @@ class TradingEnvironment(gym.Env):
         Raises:
             ValueError: If any feature columns contain NaN or infinite values.
         """
-        self.df = df
+        self.df = df.reset_index(drop=True)
         self.initial_capital = initial_capital
         self.lookback_window = lookback_window
         self.render_mode = render_mode
@@ -116,14 +116,15 @@ class TradingEnvironment(gym.Env):
         Raises:
             AssertionError: If the observation contains NaN or infinite values.
         """
+        safe_step = min(self.current_step, len(self.df) - 1)
         window = self.df[self.feature_columns].iloc[
-            self.current_step - self.lookback_window : self.current_step
+            max(0, safe_step - self.lookback_window) : safe_step
         ].values.flatten()
 
         capital_ratio = self.current_capital / self.initial_capital
         position_held = 1.0 if self.position_size > 0 else 0.0
         if self.position_size > 0:
-            current_price = float(self.df["close"].iloc[self.current_step])
+            current_price = float(self.df["close"].iloc[safe_step])
             unrealized_pnl_pct = (current_price - self.entry_price) / self.entry_price
         else:
             unrealized_pnl_pct = 0.0
