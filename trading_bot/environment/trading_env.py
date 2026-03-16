@@ -9,7 +9,7 @@ from data.features import FEATURE_COLUMNS
 
 COMMISSION_RATE = 0.001
 DRAWDOWN_THRESHOLD = 0.10
-PENALTY_MULTIPLIER = 10.0
+DRAWDOWN_MULTIPLIER = 0.1
 SHARPE_WINDOW = 50
 RUIN_THRESHOLD = 0.10
 
@@ -77,7 +77,6 @@ class TradingEnvironment(gym.Env):
         self.current_step: int = lookback_window
         self.peak_value: float = initial_capital
         self.portfolio_value: float = initial_capital
-        self.reward_history: list[float] = []
 
     def reset(
         self,
@@ -102,7 +101,6 @@ class TradingEnvironment(gym.Env):
         self.current_step = self.lookback_window
         self.peak_value = self.initial_capital
         self.portfolio_value = self.initial_capital
-        self.reward_history = []
 
         observation = self._get_observation()
         return observation.astype(np.float32), {"portfolio_value": self.portfolio_value}
@@ -167,7 +165,7 @@ class TradingEnvironment(gym.Env):
             sale_value = self.position_size * current_price * (1 - COMMISSION_RATE)
             realized_pnl = sale_value - (self.position_size * self.entry_price)
             self.current_capital = sale_value
-            step_reward = realized_pnl
+            step_reward = realized_pnl / self.initial_capital
             self.position_size = 0.0
             self.entry_price = 0.0
             self.trade_count += 1
@@ -181,11 +179,9 @@ class TradingEnvironment(gym.Env):
 
         drawdown = (self.peak_value - self.portfolio_value) / self.peak_value
         if drawdown > DRAWDOWN_THRESHOLD:
-            step_reward -= drawdown * PENALTY_MULTIPLIER
+            step_reward -= drawdown * DRAWDOWN_MULTIPLIER
 
-        self.reward_history.append(step_reward)
-        recent_rewards = self.reward_history[-SHARPE_WINDOW:]
-        reward = float(step_reward / (np.std(recent_rewards) + 1e-9))
+        reward = float(np.clip(step_reward, -1.0, 1.0))
 
         terminated = bool(
             self.current_step >= len(self.df) - 1
