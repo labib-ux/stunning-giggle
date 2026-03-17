@@ -170,7 +170,15 @@ class TradingEnvironment(gym.Env):
             self.entry_price = 0.0
             self.trade_count += 1
         else:
-            step_reward = 0.0
+            if self.position_size > 0:
+                safe_step = min(self.current_step, len(self.df) - 1)
+                current_price = self.df["close"].iloc[safe_step]
+                unrealized_pnl = (
+                    (current_price - self.entry_price) / self.entry_price
+                )
+                step_reward = unrealized_pnl * 0.01
+            else:
+                step_reward = 0.0
 
         self.portfolio_value = self.current_capital + (
             self.position_size * current_price
